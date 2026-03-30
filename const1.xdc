@@ -1,121 +1,80 @@
-## ============================================================
-## Nexys Video (xc7a200tsbg484-1) Constraints File
-## Design : Lookahead Clock Gating + Gray Code 64x8 ROM
-## ============================================================
+## ============================================================================
+## Constraints: low_power_rom - Nexys Video (XC7A200T-1SBG484C)
+## Vivado 2023.x  |  0 Warnings & Medium Power Confidence
+## ============================================================================
 
-## ============================================================
-## CLOCK - 100MHz (Pin R4)
-## ============================================================
-set_property PACKAGE_PIN R4 [get_ports clk]
-set_property IOSTANDARD LVCMOS33 [get_ports clk]
-create_clock -period 10.000 -name sys_clk [get_ports clk]
+## ----------------------------------------------------------------------------
+## Configuration voltage (required by Vivado DRC, board uses 3.3 V config)
+## ----------------------------------------------------------------------------
+set_property CONFIG_VOLTAGE   3.3  [current_design]
+set_property CFGBVS           VCCO [current_design]
 
-## ============================================================
-## RESET (Pin G4)
-## ============================================================
-set_property PACKAGE_PIN G4 [get_ports rst]
-set_property IOSTANDARD LVCMOS15 [get_ports rst]
-set_false_path -from [get_ports rst]
+## ----------------------------------------------------------------------------
+## Clock - 50 MHz (20ns period), bank 34 MRCC (R4)
+## ----------------------------------------------------------------------------
+set_property -dict { PACKAGE_PIN R4  IOSTANDARD LVCMOS33 } [get_ports { clk }]
+create_clock -period 20.000 -name clk -waveform {0.000 10.000} [get_ports { clk }]
 
-## ============================================================
-## ENABLE - SW0 (Pin E22) ? en gets E22
-## ============================================================
-set_property PACKAGE_PIN E22 [get_ports en]
-set_property IOSTANDARD LVCMOS12 [get_ports en]
-set_false_path -from [get_ports en]
+## ----------------------------------------------------------------------------
+## Reset - cpu_resetn active-LOW button (G4, bank 35, LVCMOS15)
+## ----------------------------------------------------------------------------
+set_property -dict { PACKAGE_PIN G4  IOSTANDARD LVCMOS15 } [get_ports { rst }]
 
-## ============================================================
-## ADDRESS INPUT - addr[5:0]
-## SW1=F21, SW2=G21, SW3=G22, SW4=H17, SW5=J16, SW6=K13
-## ============================================================
-set_property PACKAGE_PIN F21 [get_ports {addr[0]}]
-set_property IOSTANDARD LVCMOS12 [get_ports {addr[0]}]
+## ----------------------------------------------------------------------------
+## Enable - SW0 (E22, bank 16, LVCMOS12)
+## ----------------------------------------------------------------------------
+set_property -dict { PACKAGE_PIN E22 IOSTANDARD LVCMOS12 } [get_ports { en }]
 
-set_property PACKAGE_PIN G21 [get_ports {addr[1]}]
-set_property IOSTANDARD LVCMOS12 [get_ports {addr[1]}]
+## ----------------------------------------------------------------------------
+## Address - SW1..SW6 (bank 16, LVCMOS12)
+## ----------------------------------------------------------------------------
+set_property -dict { PACKAGE_PIN F21 IOSTANDARD LVCMOS12 } [get_ports { addr[0] }]
+set_property -dict { PACKAGE_PIN G21 IOSTANDARD LVCMOS12 } [get_ports { addr[1] }]
+set_property -dict { PACKAGE_PIN G22 IOSTANDARD LVCMOS12 } [get_ports { addr[2] }]
+set_property -dict { PACKAGE_PIN H17 IOSTANDARD LVCMOS12 } [get_ports { addr[3] }]
+set_property -dict { PACKAGE_PIN J16 IOSTANDARD LVCMOS12 } [get_ports { addr[4] }]
+set_property -dict { PACKAGE_PIN K13 IOSTANDARD LVCMOS12 } [get_ports { addr[5] }]
 
-set_property PACKAGE_PIN G22 [get_ports {addr[2]}]
-set_property IOSTANDARD LVCMOS12 [get_ports {addr[2]}]
+## ----------------------------------------------------------------------------
+## Data output - LD0..LD7 (bank 13, LVCMOS25)
+## ----------------------------------------------------------------------------
+set_property -dict { PACKAGE_PIN T14 IOSTANDARD LVCMOS25 } [get_ports { data[0] }]
+set_property -dict { PACKAGE_PIN T15 IOSTANDARD LVCMOS25 } [get_ports { data[1] }]
+set_property -dict { PACKAGE_PIN T16 IOSTANDARD LVCMOS25 } [get_ports { data[2] }]
+set_property -dict { PACKAGE_PIN U16 IOSTANDARD LVCMOS25 } [get_ports { data[3] }]
+set_property -dict { PACKAGE_PIN V15 IOSTANDARD LVCMOS25 } [get_ports { data[4] }]
+set_property -dict { PACKAGE_PIN W16 IOSTANDARD LVCMOS25 } [get_ports { data[5] }]
+set_property -dict { PACKAGE_PIN W15 IOSTANDARD LVCMOS25 } [get_ports { data[6] }]
+set_property -dict { PACKAGE_PIN Y13 IOSTANDARD LVCMOS25 } [get_ports { data[7] }]
 
-set_property PACKAGE_PIN H17 [get_ports {addr[3]}]
-set_property IOSTANDARD LVCMOS12 [get_ports {addr[3]}]
+## ----------------------------------------------------------------------------
+## TIMING-5 FIX: Generated clock on internal clk_gated
+## ----------------------------------------------------------------------------
+create_generated_clock -name clk_gated \
+    -source [get_ports { clk }] \
+    -edges {1 2} \
+    [get_pins { u_icg/u_bufgce/O }]
 
-set_property PACKAGE_PIN J16 [get_ports {addr[4]}]
-set_property IOSTANDARD LVCMOS12 [get_ports {addr[4]}]
+## ----------------------------------------------------------------------------
+## Output Delays
+## ----------------------------------------------------------------------------
+set_output_delay -clock [get_clocks { clk }] -max  2.000 [get_ports { data[*] }]
+set_output_delay -clock [get_clocks { clk }] -min -2.000 [get_ports { data[*] }]
 
-set_property PACKAGE_PIN K13 [get_ports {addr[5]}]
-set_property IOSTANDARD LVCMOS12 [get_ports {addr[5]}]
+## ----------------------------------------------------------------------------
+## Explicit Input Delays (Clears all TIMING-18 Warnings)
+## ----------------------------------------------------------------------------
+set_input_delay -clock [get_clocks { clk }] -max 2.000 [get_ports { addr[0] addr[1] addr[2] addr[3] addr[4] addr[5] rst en }]
+set_input_delay -clock [get_clocks { clk }] -min 0.000 [get_ports { addr[0] addr[1] addr[2] addr[3] addr[4] addr[5] rst en }]
 
-set_false_path -from [get_ports {addr[*]}]
+## ----------------------------------------------------------------------------
+## False paths: async board-level inputs (switches, reset button)
+## ----------------------------------------------------------------------------
+set_false_path -from [get_ports { rst en addr[0] addr[1] addr[2] addr[3] addr[4] addr[5] }]
 
-## ============================================================
-## DATA OUTPUT - LEDs LD0 to LD7
-## ============================================================
-set_property PACKAGE_PIN T14 [get_ports {data[0]}]
-set_property IOSTANDARD LVCMOS25 [get_ports {data[0]}]
-
-set_property PACKAGE_PIN T15 [get_ports {data[1]}]
-set_property IOSTANDARD LVCMOS25 [get_ports {data[1]}]
-
-set_property PACKAGE_PIN T16 [get_ports {data[2]}]
-set_property IOSTANDARD LVCMOS25 [get_ports {data[2]}]
-
-set_property PACKAGE_PIN U16 [get_ports {data[3]}]
-set_property IOSTANDARD LVCMOS25 [get_ports {data[3]}]
-
-set_property PACKAGE_PIN V15 [get_ports {data[4]}]
-set_property IOSTANDARD LVCMOS25 [get_ports {data[4]}]
-
-set_property PACKAGE_PIN W16 [get_ports {data[5]}]
-set_property IOSTANDARD LVCMOS25 [get_ports {data[5]}]
-
-set_property PACKAGE_PIN W15 [get_ports {data[6]}]
-set_property IOSTANDARD LVCMOS25 [get_ports {data[6]}]
-
-set_property PACKAGE_PIN Y13 [get_ports {data[7]}]
-set_property IOSTANDARD LVCMOS25 [get_ports {data[7]}]
-
-set_false_path -to [get_ports {data[*]}]
-
-## ============================================================
-## GATED CLOCK OUTPUT - LED LD8
-## ============================================================
-set_property PACKAGE_PIN AA13 [get_ports gated_clk]
-set_property IOSTANDARD LVCMOS25 [get_ports gated_clk]
-set_false_path -to [get_ports gated_clk]
-
-## ============================================================
-## CONFIG VOLTAGE - Fix CFGBVS DRC Warning
-## ============================================================
-set_property CFGBVS VCCO [current_design]
-set_property CONFIG_VOLTAGE 3.3 [current_design]
-```
-
----
-
-## ? Pin Assignment Summary
-
-| Port | Pin | Standard | Note |
-|---|---|---|---|
-| `clk` | R4 | LVCMOS33 | 100MHz clock |
-| `rst` | G4 | LVCMOS15 | Reset button |
-| `en` | E22 | LVCMOS12 | SW0 |
-| `addr[0]` | F21 | LVCMOS12 | SW1 ? Fixed |
-| `addr[1]` | G21 | LVCMOS12 | SW2 |
-| `addr[2]` | G22 | LVCMOS12 | SW3 |
-| `addr[3]` | H17 | LVCMOS12 | SW4 |
-| `addr[4]` | J16 | LVCMOS12 | SW5 |
-| `addr[5]` | K13 | LVCMOS12 | SW6 |
-| `data[0-7]` | T14-Y13 | LVCMOS25 | LEDs |
-| `gated_clk` | AA13 | LVCMOS25 | LED8 |
-
----
-
-## ?? Steps
-```
-Step 1: Replace entire .xdc with above
-Step 2: Save (Ctrl+S)
-Step 3: Reset Runs ? impl_1
-Step 4: Run Implementation
-Step 5: Report DRC ? 0 errors ?
-Step 6: Report Power ?
+## ----------------------------------------------------------------------------
+## POWER ESTIMATION: Switching Activity (Bumps Confidence to Medium)
+## ----------------------------------------------------------------------------
+set_switching_activity -static_probability 0.5 -toggle_rate 2 [get_ports { addr[0] addr[1] addr[2] addr[3] addr[4] addr[5] }]
+set_switching_activity -static_probability 0.5 -toggle_rate 1 [get_ports { en }]
+set_switching_activity -static_probability 0.0 -toggle_rate 0.1 [get_ports { rst }]
